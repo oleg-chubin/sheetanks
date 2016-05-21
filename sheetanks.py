@@ -37,6 +37,44 @@ async def prebattle_handle(request):
     return {'name': name, 'form': form}
 
 
+@aiohttp_jinja2.template('arena.html')
+async def arena_handle(request):
+    session = await get_session(request)
+    name = session.get('name', 'Anonimous')
+    return {'name': name}
+
+
+WEB_SOCKETS = {}
+async def websocket_handler(request):
+    session = await get_session(request)
+    name = session.get('name', 'Anonimous')
+
+    print("websocket starterd")
+    ws = web.WebSocketResponse()
+
+    WEB_SOCKETS[id(ws)] = ws
+
+    await ws.prepare(request)
+    print("websocket prepared")
+
+    async for msg in ws:
+        print("websocket new msg")
+        if msg.tp == aiohttp.MsgType.text:
+            if msg.data == 'close':
+                await ws.close()
+            else:
+                for web_sock in WEB_SOCKETS.values():
+                    web_sock.send_str(msg.data + '({})'.format(name))
+        elif msg.tp == aiohttp.MsgType.error:
+            print('ws connection closed with exception %s' %
+                  ws.exception())
+
+    print('websocket connection closed')
+    WEB_SOCKETS.pop(id(ws), None)
+
+    return ws
+
+
 app = web.Application(
     middlewares=[
         session_middleware(
@@ -56,6 +94,8 @@ app.router.add_route('GET', '/login', handle)
 app.router.add_route('POST', '/login', login_handle)
 app.router.add_route('GET', '/prebattle', prebattle_handle)
 app.router.add_route('POST', '/prebattle', prebattle_handle)
-app.router.add_static('/static', os.path.join(PROJECT_DIR, 'static'))
+app.router.add_route('GET', '/arena', arena_handle)
+app.router.add_route('GET', '/websocket', websocket_handler)
+app.router.add_static('/static', os.path.join(PROJECT_DIR, 'static'), name='static')
 
 web.run_app(app)

@@ -7,7 +7,7 @@
 {% block content %}
 
     <form id="form_login" action="" method="POST">
-        <h3> {{name}} Hangar </h3>
+        <h3> {{name|title}} Hangar </h3>
         {% for field in form %}
         <p>
             {{field}}
