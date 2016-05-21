@@ -1,3 +1,20 @@
 {% extends "base.html" %}
 {% block title %}Hello{% endblock %}
-{% block content %}<h1> Hello {{name}} </h1>{% endblock %}
+{% block extra_head %} 
+<link rel="stylesheet" href="/static/css/landing_page.css">
+{% endblock %}
+
+{% block content %}
+
+<h1> Hello {{name}} </h1>
+    <form id="form_login">
+        {% for field in form %}
+        <p>
+            {{field}}
+        </p>
+        {% endfor %}
+        <p>
+            <button id="submitbutton" type="button">Se connecter</button>
+        </p>
+    </form>
+{% endblock %}
