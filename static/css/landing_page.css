@@ -9,7 +9,7 @@ body {
     display:table-cell;
     vertical-align:middle;
 }
-form {
+.centered_table {
     display:table;/* shrinks to fit conntent */
     margin:auto;
 }

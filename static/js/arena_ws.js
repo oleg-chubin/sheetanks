@@ -1,8 +1,8 @@
 try{
-    var sock = new WebSocket('ws://' + window.location.host + '/websocket');
+    var sock = new WebSocket('ws://' + window.location.host + '/arena/ws');
 }
 catch(err){
-    var sock = new WebSocket('wss://' + window.location.host + '/websocket');
+    var sock = new WebSocket('wss://' + window.location.host + '/arena/ws');
 }
 
 // show message in div#subscribe

@@ -6,4 +6,4 @@ class LoginForm(Form):
 
 
 class HangarForm(Form):
-    vehicle = SelectField(u'Vehicle', choices=[(1, "T-34"), (2, "T43")])
+    vehicle = SelectField(u'Vehicle', choices=[('1', "T-34"), ('2', "T43")])
