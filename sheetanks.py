@@ -32,6 +32,7 @@ async def login_handle(request):
     if form.validate():
         session = await get_session(request)
         session['name'] = form.nickname.data
+        session['account_id'] = str(uuid4())
         return aiohttp.web.HTTPFound('/hangar')
     return {"name": form.nickname.object_data, 'form': form}
 
@@ -44,7 +45,9 @@ async def hangar_handle(request):
         await request.post()
         form = forms.HangarForm(request.POST)
         if form.validate():
-            return aiohttp.web.HTTPFound('/prebattle')
+            return aiohttp.web.HTTPFound(
+                '/prebattle?vehicle={}'.format(form.data['vehicle'])
+            )
     else:
         form = forms.HangarForm()
     return {'name': name, 'form': form}
@@ -65,9 +68,14 @@ ARENAS = {}
 
 BATTLE_QUEUE = collections.deque()
 
+VEHICLES = {}
+
 
 @aiohttp_jinja2.template('prebattle.html')
 async def prebattle_handle(request):
+    session = await get_session(request)
+    account_id = session['account_id']
+    VEHICLES[account_id] = request.GET['vehicle']
     return {'people_number': len(BATTLE_QUEUE)}
 
 
@@ -78,8 +86,29 @@ def get_rosters(queue):
     return roster
 
 
+def sync_arena(arena):
+    vehicles = arena['vehicles']
+    for ally, enemy in (arena['teams'], reversed(arena['teams'])):
+        data = {
+            'command': "sync_arena",
+            'ally': {k: vehicles[k] for k in ally if k in vehicles},
+            'enemy': {k: vehicles[k] for k in enemy if k in vehicles}
+        }
+        for acc in ally:
+            print ("sync", acc)
+            data['account_id'] = acc
+            arena['ws'][acc].send_str(json.dumps(data))
+
+
 async def turn_rotator(future, arena_id):
     arena = ARENAS[arena_id]
+    arena['status'] = 'set_vehicle'
+    await asyncio.sleep(TURN_PERIOD)
+
+    print ("sync arena")
+    sync_arena(arena)
+
+    arena['status'] = 'battle'
     arena.setdefault('turn_data', [])
     for i in range(MAX_TURN_NUMBER):
         await asyncio.sleep(TURN_PERIOD)
@@ -100,14 +129,18 @@ async def turn_rotator(future, arena_id):
             elif ws == winner['ws']:
                 msg = 'You have won'
             else:
-                msg = '{name} has won with {data}'.format(**winner)
+                msg = '{name} on {vehicle} has won with {data}'.format(
+                    vehicle=VEHICLES[winner['account_id']], **winner)
             ws.send_str(msg)
 
 
 async def prebattle_ws_handler(request):
+    session = await get_session(request)
+    account_id = session['account_id']
+
     ws = web.WebSocketResponse()
 
-    BATTLE_QUEUE.append(ws)
+    BATTLE_QUEUE.append({'account_id': account_id, 'ws': ws})
 
     await ws.prepare(request)
 
@@ -115,20 +148,21 @@ async def prebattle_ws_handler(request):
     while roster:
         arena_id = str(uuid4())
 
-        ARENAS[arena_id] = {}
+        participants = [i['account_id'] for i in roster]
+        ARENAS[arena_id] = {'teams': [participants[::2], participants[1::2]]}
         future = asyncio.Future()
         asyncio.ensure_future(turn_rotator(future, arena_id))
         ARENAS[arena_id]['turn_future'] = future
 
         data = {'redirect': '/arena/{}'.format(arena_id)}
         for web_sock in roster:
-            web_sock.send_str(json.dumps(data))
+            web_sock['ws'].send_str(json.dumps(data))
 
         roster = get_rosters(BATTLE_QUEUE)
 
     for web_sock in BATTLE_QUEUE:
         data = {'message': 'People awaiting: {}'.format(len(BATTLE_QUEUE))}
-        web_sock.send_str(json.dumps(data))
+        web_sock['ws'].send_str(json.dumps(data))
 
     async for msg in ws:
         if msg.tp == aiohttp.MsgType.text:
@@ -143,18 +177,25 @@ async def prebattle_ws_handler(request):
     return ws
 
 
+def get_field_position(data):
+    return {'x': data['x'], 'y': data['y']}
+
+
 WEB_SOCKETS = {}
 async def arena_ws_handler(request):
     session = await get_session(request)
     arena_id = session.get('arena_id', None)
     name = session.get('name', 'Anonimous')
+    account_id = session['account_id']
 
     print("websocket starterd")
     ws = web.WebSocketResponse()
 
     arena = ARENAS[arena_id]
     arena_websockets = arena.setdefault('ws', {})
-    arena_websockets[id(ws)] = ws
+    vehicles = arena.setdefault('vehicles', {})
+    arena_websockets[account_id] = ws
+    my_team = [i for i in arena['teams'] if account_id in i][0]
 
     await ws.prepare(request)
     print("websocket prepared")
@@ -165,10 +206,23 @@ async def arena_ws_handler(request):
             if msg.data == 'close':
                 await ws.close()
             else:
-                arena['turn_data'].append(
-                    {'name':name, 'ws': ws, 'data': msg.data}
-                )
-                ws.send_str("You have entered {}".format(msg.data))
+                if arena['status'] == 'set_vehicle':
+                    vehicles[account_id] = get_field_position(json.loads(msg.data))
+                    data = {k: v for k, v in vehicles.items() if k in my_team}
+                    for acc in my_team:
+                        if acc in arena_websockets:
+                            arena_websockets[acc].send_str(
+                                json.dumps(
+                                    {
+                                        'command': "update_vehicles",
+                                        "vehicles": data,
+                                        "account_id": acc
+                                    }
+                                ))
+                elif arena['status'] == 'battle':
+                    arena['turn_data'].append(
+                        {'name':name, 'account_id': account_id, 'ws': ws, 'data': msg.data}
+                    )
         elif msg.tp == aiohttp.MsgType.error:
             print('ws connection closed with exception %s' %
                   ws.exception())
