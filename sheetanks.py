@@ -9,9 +9,12 @@ import forms
 import collections
 import json
 from uuid import uuid4
+import asyncio
 
 
 TEAM_SIZE = 2
+MAX_TURN_NUMBER = 5
+TURN_PERIOD = 20
 PROJECT_DIR = os.path.dirname(__file__)
 
 
@@ -75,6 +78,32 @@ def get_rosters(queue):
     return roster
 
 
+async def turn_rotator(future, arena_id):
+    arena = ARENAS[arena_id]
+    arena.setdefault('turn_data', [])
+    for i in range(MAX_TURN_NUMBER):
+        await asyncio.sleep(TURN_PERIOD)
+        arenas_ws = arena.get('ws', {})
+
+        print ("arena ws", arenas_ws)
+        print ("arena turn data", arena['turn_data'])
+
+        winner = {}
+        for data in arena['turn_data']:
+            if not winner or float(winner['data']) < float(data['data']):
+                winner = data
+        print ("winner", winner)
+        arena['turn_data'] = []
+        for ws in arenas_ws.values():
+            if not winner:
+                msg = 'nooone has won'
+            elif ws == winner['ws']:
+                msg = 'You have won'
+            else:
+                msg = '{name} has won with {data}'.format(**winner)
+            ws.send_str(msg)
+
+
 async def prebattle_ws_handler(request):
     ws = web.WebSocketResponse()
 
@@ -82,13 +111,20 @@ async def prebattle_ws_handler(request):
 
     await ws.prepare(request)
 
-    roster = True
+    roster = get_rosters(BATTLE_QUEUE)
     while roster:
-        roster = get_rosters(BATTLE_QUEUE)
         arena_id = str(uuid4())
+
+        ARENAS[arena_id] = {}
+        future = asyncio.Future()
+        asyncio.ensure_future(turn_rotator(future, arena_id))
+        ARENAS[arena_id]['turn_future'] = future
+
         data = {'redirect': '/arena/{}'.format(arena_id)}
         for web_sock in roster:
             web_sock.send_str(json.dumps(data))
+
+        roster = get_rosters(BATTLE_QUEUE)
 
     for web_sock in BATTLE_QUEUE:
         data = {'message': 'People awaiting: {}'.format(len(BATTLE_QUEUE))}
@@ -116,7 +152,9 @@ async def arena_ws_handler(request):
     print("websocket starterd")
     ws = web.WebSocketResponse()
 
-    WEB_SOCKETS.setdefault(arena_id, {})[id(ws)] = ws
+    arena = ARENAS[arena_id]
+    arena_websockets = arena.setdefault('ws', {})
+    arena_websockets[id(ws)] = ws
 
     await ws.prepare(request)
     print("websocket prepared")
@@ -127,8 +165,10 @@ async def arena_ws_handler(request):
             if msg.data == 'close':
                 await ws.close()
             else:
-                for web_sock in WEB_SOCKETS[arena_id].values():
-                    web_sock.send_str(msg.data + '({})'.format(name))
+                arena['turn_data'].append(
+                    {'name':name, 'ws': ws, 'data': msg.data}
+                )
+                ws.send_str("You have entered {}".format(msg.data))
         elif msg.tp == aiohttp.MsgType.error:
             print('ws connection closed with exception %s' %
                   ws.exception())
