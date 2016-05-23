@@ -51,7 +51,14 @@ function update_ally(parsed_data)
                 tank = $('<img src="/static/images/tank.png" class="teammate">');
                 $('.arena_field').append(tank);
                 var pos = parsed_data.vehicles[key];
-                tank.css({top: pos.y - 50, left: pos.x - 50, position:'absolute'});
+                tank.css(
+                    {
+                        top: pos.y - 50,
+                        left: pos.x - 50,
+                        position:'absolute',
+                        opacity: 0.4,
+                        filter: "alpha(opacity=40)" /* For IE8 and earlier */
+                    });
             }
         }
     }
