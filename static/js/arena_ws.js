@@ -88,6 +88,30 @@ function sync_arena(parsed_data){
     }
 }
 
+function update_countdown(parsed_data){
+    var countdown_div =$('.arena_field').find('.countdown');
+    if (!countdown_div.length){
+        var countdown_div = $('<div class="countdown"></div>');
+        countdown_div.css({'text-align': 'center'});
+        $('.arena_field').prepend(countdown_div);
+    }
+    countdown_div.html(parsed_data.left);
+}
+
+function update_shot(parsed_data){
+    var shot_img =$('.arena_field').find('.shot');
+    if (!shot_img.length){
+        shot_img = $('<img src="/static/images/aim.png" class="shot">');
+        $('.arena_field').prepend(shot_img);
+    }
+    shot_img.css(
+        {
+            top: parsed_data.data.y - 50,
+            left: parsed_data.data.x - 50,
+            position:'absolute',
+        });
+}
+
 // income message handler
 sock.onmessage = function(event) {
   var parsed_data = JSON.parse(event.data);
@@ -96,6 +120,12 @@ sock.onmessage = function(event) {
   }
   if (parsed_data.command == 'sync_arena'){
     sync_arena(parsed_data);
+  }
+  if (parsed_data.command == 'update_countdown'){
+    update_countdown(parsed_data);
+  }
+  if (parsed_data.command == 'update_shot'){
+    update_shot(parsed_data);
   }
 //   showMessage(event.data);
 };

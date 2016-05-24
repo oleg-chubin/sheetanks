@@ -7,7 +7,8 @@ import os
 import forms
 import collections
 from uuid import uuid4
-from data_processor import Arena, Avatar
+from arena import Arena
+from avatar import Avatar
 
 
 TEAM_SIZE = 2
@@ -99,8 +100,7 @@ async def prebattle_ws_handler(request):
 
     roster = get_rosters(BATTLE_QUEUE)
     while roster:
-        participants = list(range(len(roster)))
-        arena = Arena(roster, teams=[participants[::2], participants[1::2]])
+        arena = Arena(teams=[roster[::2], roster[1::2]])
         ARENAS[arena.id] = arena
 
         for a in roster:
@@ -136,9 +136,9 @@ async def arena_ws_handler(request):
     ws = web.WebSocketResponse()
 
     arena = ARENAS[arena_id]
-    arena.connect_avatar(account_id, ws)
 
     await ws.prepare(request)
+    arena.connect_avatar(account_id, ws)
 
     async for msg in ws:
         if msg.tp == aiohttp.MsgType.text:
