@@ -66,3 +66,5 @@ target/
 .project
 .pydevproject
 
+# IDE files
+.idea/

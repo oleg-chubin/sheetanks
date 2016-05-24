@@ -19,6 +19,13 @@ BATTLE_QUEUE = collections.deque()
 
 
 @aiohttp_jinja2.template('landing_page.html')
+async def index_handle(request):
+    form = forms.LoginForm()
+    name = request.match_info.get('name', "Anonymous")
+    return {"name": name, 'form': form}
+
+
+@aiohttp_jinja2.template('landing_page.html')
 async def handle(request):
     form = forms.LoginForm()
     name = request.match_info.get('name', "Anonymous")
@@ -59,7 +66,7 @@ async def arena_handle(request):
     session = await get_session(request)
     session['arena_id'] = arena_id
 
-    name = session.get('name', 'Anonimous')
+    name = session.get('name', 'Anonymous')
     return {'name': name}
 
 
@@ -144,7 +151,7 @@ async def arena_ws_handler(request):
             print('ws connection closed with exception %s' %
                   ws.exception())
 
-    arena.disconnect_avatar()
+    arena.disconnect_avatar(account_id)
 
     return ws
 
@@ -164,6 +171,7 @@ aiohttp_jinja2.setup(app,
     )
 )
 
+app.router.add_route('GET', '/', index_handle)
 app.router.add_route('GET', '/login', handle)
 app.router.add_route('POST', '/login', login_handle)
 app.router.add_route('GET', '/hangar', hangar_handle)
