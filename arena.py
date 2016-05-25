@@ -2,6 +2,7 @@ import json
 import asyncio
 from uuid import uuid4
 from itertools import chain
+import random
 
 
 MAX_TURN_NUMBER = 5
@@ -15,6 +16,7 @@ class Arena():
         self.vehicles = {}
         self.status = 'set_vehicle'
         self.id = str(uuid4())
+        self.divider = None
         self.future = asyncio.Future()
         asyncio.ensure_future(self.turn_rotator(self.future))
 
@@ -32,7 +34,10 @@ class Arena():
         getattr(self, self.status)(account_id, json.loads(data))
 
     def get_field_position(self, data):
-        return {'x': data['x'], 'y': data['y']}
+        return {
+            'x': 1000 * data['x'] / float(data['width']),
+            'y': 1000 * data['y'] / float(data['height'])
+        }
 
     def get_ally(self, account_id):
         if account_id in [i.id for i in self.teams[0]]:
@@ -52,13 +57,12 @@ class Arena():
 
     def battle(self, account_id, data):
         avatar = self.avatars[account_id]
+        data = self.get_field_position(data)
         self.turn_data.append({'avatar': avatar, 'data': data})
         print("updateshot", data)
         avatar.send_message(
             {'command': "update_shot", "data": data}
         )
-
-
 
     def broadcast_message(self, data):
         for avatar in chain.from_iterable(self.teams):
@@ -72,31 +76,46 @@ class Arena():
     async def turn_rotator(self, future):
         await self.countdown_turn(TURN_PERIOD)
 
-        self.sync_arena()
-
         self.status = 'battle'
         for i in range(MAX_TURN_NUMBER):
+            self.sync_arena()
+
             await self.countdown_turn(TURN_PERIOD)
 
-            winner = {}
-            for data in self.turn_data:
-                if not winner or float(winner['data']) < float(data['data']):
-                    winner = data
+            print (self.turn_data)
             self.turn_data = []
+            self.divider = self.get_divider()
+
             for avatar in chain.from_iterable(self.teams):
-                if not winner:
-                    msg = 'nooone has won'
-                elif avatar.ws == winner['ws']:
-                    msg = 'You have won'
-                else:
-                    msg = '{name} on {vehicle} has won with {data}'.format(
-                        vehicle=avatar.vehicle, **winner)
-                avatar.send_message({'message': msg})
+                avatar.send_message({'message': "msg"})
+
+    def get_divider(self):
+        normalized_coords = []
+        for vehicle in self.vehicles.values():
+            normalized_coords.append((vehicle['x'] - 500, vehicle['y'] - 500))
+        max_x = 400
+        min_x = -400
+        for x, y in normalized_coords:
+            if x * y < 0:
+                min_x = max(min_x, x / y * 100)
+            elif  x * y > 0:
+                max_x = min(max_x, x / y * 100)
+
+        print(normalized_coords, min_x, max_x)
+        result = random.randrange(int(min_x) + 1, int(max_x))
+        if not result:
+            result = None
+        else:
+            result = 100.0 / result
+
+        print(normalized_coords, min_x, max_x, result)
+        return result
 
     def sync_arena(self):
         for ally, enemy in [self.teams, self.teams[::-1]]:
             data = {
                 'command': "sync_arena",
+                'divider': self.divider,
                 'ally': {k.id: self.vehicles[k.id] for k in ally if k.id in self.vehicles},
                 'enemy': {k.id: self.vehicles[k.id] for k in enemy if k.id in self.vehicles}
             }
