@@ -12,7 +12,8 @@ TURN_PERIOD = 20
 class Arena():
     def __init__(self, teams):
         self.teams = teams
-        self.turn_data = []
+        self.shots = []
+        self.turn_data = {}
         self.vehicles = {}
         self.status = 'set_vehicle'
         self.id = str(uuid4())
@@ -58,8 +59,7 @@ class Arena():
     def battle(self, account_id, data):
         avatar = self.avatars[account_id]
         data = self.get_field_position(data)
-        self.turn_data.append({'avatar': avatar, 'data': data})
-        print("updateshot", data)
+        self.turn_data[avatar.id] = data
         avatar.send_message(
             {'command': "update_shot", "data": data}
         )
@@ -67,6 +67,9 @@ class Arena():
     def broadcast_message(self, data):
         for avatar in chain.from_iterable(self.teams):
             avatar.send_message(data)
+
+    def calculate_turn_result(self, turn_data, divider):
+        return turn_data
 
     async def countdown_turn(self, delay):
         for i in range(delay, 0, -1):
@@ -82,8 +85,10 @@ class Arena():
 
             await self.countdown_turn(TURN_PERIOD)
 
-            print (self.turn_data)
-            self.turn_data = []
+            self.shots.append(
+                self.calculate_turn_result(self.turn_data, self.divider)
+            )
+            self.turn_data = {}
             self.divider = self.get_divider()
 
             for avatar in chain.from_iterable(self.teams):
@@ -108,7 +113,11 @@ class Arena():
                 'command': "sync_arena",
                 'divider': self.divider,
                 'ally': {k.id: self.vehicles[k.id] for k in ally if k.id in self.vehicles},
-                'enemy': {k.id: self.vehicles[k.id] for k in enemy if k.id in self.vehicles}
+                'enemy': {k.id: self.vehicles[k.id] for k in enemy if k.id in self.vehicles},
+                'shots': {
+                    'ally': [s[k.id] for s in self.shots for k in ally if k.id in s],
+                    'enemy': [s[k.id] for s in self.shots for k in enemy if k.id in s],
+                },
             }
             for avatar in ally:
                 avatar.send_message(data)

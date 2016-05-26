@@ -129,6 +129,21 @@ function sync_arena(parsed_data){
                 });
         }
     }
+    
+    $.map(parsed_data.shots.enemy, function(data){
+        shot = $('<img src="/static/images/burnout.png" class="burnout">');
+        $('.arena_field').append(shot);
+        var pos = normalize_coords(data);
+        shot.css({top: pos.y - 25, left: pos.x - 25, position:'absolute'});
+    })
+    
+    $.map(parsed_data.shots.ally, function(data){
+        shot = $('<img src="/static/images/burnout.png" class="burnout">');
+        $('.arena_field').append(shot);
+        var pos = normalize_coords(data);
+        shot.css({top: pos.y - 25, right: pos.x - 25, position:'absolute'});
+    })
+    
     createLine($('.arena_field'), parsed_data.divider);
 }
 
