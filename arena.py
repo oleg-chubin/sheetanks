@@ -93,22 +93,13 @@ class Arena():
         normalized_coords = []
         for vehicle in self.vehicles.values():
             normalized_coords.append((vehicle['x'] - 500, vehicle['y'] - 500))
-        max_x = 400
-        min_x = -400
+       
+        x_offset = -500
         for x, y in normalized_coords:
-            if x * y < 0:
-                min_x = max(min_x, x / y * 100)
-            elif  x * y > 0:
-                max_x = min(max_x, x / y * 100)
+            x_offset = max(x_offset, x / max(abs(y), 20) * 500) 
 
-        print(normalized_coords, min_x, max_x)
-        result = random.randrange(int(min_x) + 1, int(max_x))
-        if not result:
-            result = None
-        else:
-            result = 100.0 / result
-
-        print(normalized_coords, min_x, max_x, result)
+        print(normalized_coords, x_offset)
+        result = random.randrange(int(x_offset) + 1, -int(x_offset))
         return result
 
     def sync_arena(self):

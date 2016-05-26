@@ -99,18 +99,15 @@ function createBaseLine(div, x1,y1, x2,y2){
     return line;
 }
 
-function createLine(div, k) {
+function createLine(div, offset) {
     var h = div.height();
     var w = div.width();
-    var offset = 0
-    if (k) {
-        offset = h / 2 * k;
-    }
     return createBaseLine(div, w/2 + offset, 0, w/2 - offset, h);
 }
 
 function sync_arena(parsed_data){
-    $('img.teammate').remove();
+    $('img.teammate,img.enemy').remove();
+    $('div.line').remove();
     for (key in parsed_data.ally) {
         if (parsed_data.ally.hasOwnProperty(key)){
             tank = $('<img src="/static/images/tank.png" class="teammate">');
