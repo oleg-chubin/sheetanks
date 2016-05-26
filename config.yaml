@@ -1,0 +1,17 @@
+vehicles:
+    rabittank:
+        name: rabit tank
+        width: 64
+        height: 64
+        hp: 300
+        damage: 100
+        radius: 50
+        image: rabittank.svg
+    elktank:
+        name: elk tank
+        width: 100
+        height: 100
+        hp: 400
+        damage: 200
+        radius: 60
+        image: elktank.svg

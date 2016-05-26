@@ -14,7 +14,6 @@ class Arena():
         self.teams = teams
         self.shots = []
         self.turn_data = {}
-        self.vehicles = {}
         self.status = 'set_vehicle'
         self.id = str(uuid4())
         self.divider = None
@@ -47,9 +46,10 @@ class Arena():
 
     def set_vehicle(self, account_id, data):
         my_team = self.get_ally(account_id)
-        self.vehicles[account_id] = self.get_field_position(data)
+        self.avatars[account_id].vehicle.set_position(
+            self.get_field_position(data))
 
-        data = {k.id: self.vehicles[k.id] for k in my_team if k.id in self.vehicles}
+        data = {k.id: k.vehicle.info for k in my_team if k.vehicle.position}
 
         for avatar in my_team:
             avatar.send_message(
@@ -96,12 +96,17 @@ class Arena():
 
     def get_divider(self):
         normalized_coords = []
-        for vehicle in self.vehicles.values():
-            normalized_coords.append((vehicle['x'] - 500, vehicle['y'] - 500))
-       
+        for avatar in chain.from_iterable(self.teams):
+            normalized_coords.append(
+                (
+                    avatar.vehicle.position['x'] - 500,
+                    avatar.vehicle.position['y'] - 500
+                )
+            )
+
         x_offset = -500
         for x, y in normalized_coords:
-            x_offset = max(x_offset, x / max(abs(y), 20) * 500) 
+            x_offset = max(x_offset, x / max(abs(y), 20) * 500)
 
         print(normalized_coords, x_offset)
         result = random.randrange(int(x_offset) + 1, -int(x_offset))
@@ -112,8 +117,8 @@ class Arena():
             data = {
                 'command': "sync_arena",
                 'divider': self.divider,
-                'ally': {k.id: self.vehicles[k.id] for k in ally if k.id in self.vehicles},
-                'enemy': {k.id: self.vehicles[k.id] for k in enemy if k.id in self.vehicles},
+                'ally': {k.id: k.vehicle.info for k in ally if k.vehicle.position},
+                'enemy': {k.id: k.vehicle.info for k in enemy if k.vehicle.position},
                 'shots': {
                     'ally': [s[k.id] for s in self.shots for k in ally if k.id in s],
                     'enemy': [s[k.id] for s in self.shots for k in enemy if k.id in s],

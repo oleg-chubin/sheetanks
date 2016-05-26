@@ -56,14 +56,15 @@ function update_ally(parsed_data)
     $('.teammate').not("#myVehicle").remove();
     for (key in parsed_data.vehicles) {
         if (parsed_data.vehicles.hasOwnProperty(key)){
-            var tank = $('<img src="/static/images/elktank.svg" class="teammate">');
+            var vehicle_info = parsed_data.vehicles[key];
+            var tank = $('<img src="/static/images/' + vehicle_info.image +'" class="teammate">');
             $('.arena_field').append(tank);
-            var pos = normalize_coords(parsed_data.vehicles[key]);
+            var pos = normalize_coords(vehicle_info);
             if (key != account_id){
                 tank.css(
                     {
-                        top: pos.y - 50,
-                        left: pos.x - 50,
+                        top: pos.y - vehicle_info.height/2,
+                        left: pos.x - vehicle_info.width/2,
                         position:'absolute',
                         opacity: 0.4,
                         filter: "alpha(opacity=40)" /* For IE8 and earlier */
@@ -72,8 +73,8 @@ function update_ally(parsed_data)
             else{
                 tank.css(
                     {
-                        top: pos.y - 50,
-                        left: pos.x - 50,
+                        top: pos.y - vehicle_info.height/2,
+                        left: pos.x - vehicle_info.width/2,
                         position:'absolute'
                     });
             }
@@ -110,40 +111,48 @@ function sync_arena(parsed_data){
     $('div.line').remove();
     for (key in parsed_data.ally) {
         if (parsed_data.ally.hasOwnProperty(key)){
-            tank = $('<img src="/static/images/elktank.svg" class="teammate">');
+            var vehicle_info = parsed_data.ally[key];
+            tank = $('<img src="/static/images/' + vehicle_info.image + '" class="teammate hint--bottom  hint--always">');
             $('.arena_field').append(tank);
             var pos = normalize_coords(parsed_data.ally[key]);
-            tank.css({top: pos.y - 50, left: pos.x - 50, position:'absolute'});
+            tank.css(
+                {
+                    top: pos.y - vehicle_info.height/2,
+                    left: pos.x - vehicle_info.width/2,
+                    position:'absolute'
+                });
         }
     }
     for (key in parsed_data.enemy) {
         if (parsed_data.enemy.hasOwnProperty(key)){
-            tank = $('<img src="/static/images/elktank.svg" class="enemy mirrored">');
+            var vehicle_info = parsed_data.enemy[key];
+            tank = $('<img src="/static/images/' + vehicle_info.image + '" class="enemy mirrored">');
             $('.arena_field').append(tank);
             var pos = normalize_coords(parsed_data.enemy[key]);
+            tank.data('hp', vehicle_info.hp + "/" + vehicle_info.initial_hp);
             tank.css(
                 {
-                    top: pos.y - 50,
-                    right: pos.x - 50,
+                    top: pos.y - vehicle_info.height/2,
+                    right: pos.x - vehicle_info.width/2,
                     position:'absolute',
                 });
         }
     }
-    
+
     $.map(parsed_data.shots.enemy, function(data){
         shot = $('<img src="/static/images/burnout.png" class="burnout">');
         $('.arena_field').append(shot);
         var pos = normalize_coords(data);
         shot.css({top: pos.y - 25, left: pos.x - 25, position:'absolute'});
     })
-    
+
     $.map(parsed_data.shots.ally, function(data){
         shot = $('<img src="/static/images/burnout.png" class="burnout">');
         $('.arena_field').append(shot);
         var pos = normalize_coords(data);
         shot.css({top: pos.y - 25, right: pos.x - 25, position:'absolute'});
     })
-    
+
     createLine($('.arena_field'), parsed_data.divider);
 }
 

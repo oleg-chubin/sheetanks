@@ -2,6 +2,7 @@ from aiohttp import web
 import jinja2
 import aiohttp_jinja2
 import aiohttp
+from conf import settings
 from aiohttp_session import get_session, session_middleware, SimpleCookieStorage
 import os
 import forms
@@ -52,11 +53,13 @@ async def hangar_handle(request):
     if request.method == 'POST':
         await request.post()
         form = forms.HangarForm(request.POST)
+        form.vehicle.choices = [(k, v.name) for k, v in settings.vehicles.items()]
         if form.validate():
             session['vehicle'] = form.data['vehicle']
             return aiohttp.web.HTTPFound('/prebattle')
     else:
         form = forms.HangarForm()
+        form.vehicle.choices = [(k, v.name) for k, v in settings.vehicles.items()]
     return {'name': name, 'form': form}
 
 
