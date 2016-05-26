@@ -7,7 +7,8 @@ import os
 import forms
 import collections
 from uuid import uuid4
-from data_processor import Arena, Avatar
+from arena import Arena
+from avatar import Avatar
 
 
 TEAM_SIZE = 2
@@ -16,6 +17,13 @@ PROJECT_DIR = os.path.dirname(__file__)
 
 ARENAS = {}
 BATTLE_QUEUE = collections.deque()
+
+
+@aiohttp_jinja2.template('landing_page.html')
+async def index_handle(request):
+    form = forms.LoginForm()
+    name = request.match_info.get('name', "Anonymous")
+    return {"name": name, 'form': form}
 
 
 @aiohttp_jinja2.template('landing_page.html')
@@ -59,7 +67,7 @@ async def arena_handle(request):
     session = await get_session(request)
     session['arena_id'] = arena_id
 
-    name = session.get('name', 'Anonimous')
+    name = session.get('name', 'Anonymous')
     return {'name': name}
 
 
@@ -92,8 +100,7 @@ async def prebattle_ws_handler(request):
 
     roster = get_rosters(BATTLE_QUEUE)
     while roster:
-        participants = list(range(len(roster)))
-        arena = Arena(roster, teams=[participants[::2], participants[1::2]])
+        arena = Arena(teams=[roster[::2], roster[1::2]])
         ARENAS[arena.id] = arena
 
         for a in roster:
@@ -129,9 +136,9 @@ async def arena_ws_handler(request):
     ws = web.WebSocketResponse()
 
     arena = ARENAS[arena_id]
-    arena.connect_avatar(account_id, ws)
 
     await ws.prepare(request)
+    arena.connect_avatar(account_id, ws)
 
     async for msg in ws:
         if msg.tp == aiohttp.MsgType.text:
@@ -144,7 +151,7 @@ async def arena_ws_handler(request):
             print('ws connection closed with exception %s' %
                   ws.exception())
 
-    arena.disconnect_avatar()
+    arena.disconnect_avatar(account_id)
 
     return ws
 
@@ -164,6 +171,7 @@ aiohttp_jinja2.setup(app,
     )
 )
 
+app.router.add_route('GET', '/', index_handle)
 app.router.add_route('GET', '/login', handle)
 app.router.add_route('POST', '/login', login_handle)
 app.router.add_route('GET', '/hangar', hangar_handle)

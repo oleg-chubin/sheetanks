@@ -1,6 +1,7 @@
 import json
 import asyncio
 from uuid import uuid4
+from itertools import chain
 
 
 MAX_TURN_NUMBER = 5
@@ -22,7 +23,7 @@ class Avatar():
     def set_vehicle(self, vehicle):
         self.vehicle = Vehicle(vehicle)
 
-    def disconnect(self, ws):
+    def disconnect(self):
         self.connected = False
         self.ws = None
 
@@ -46,9 +47,10 @@ class Avatar():
 
 class Arena():
     def __init__(self, avatars, teams):
-        self.avatars = avatars
-        self.teams = [[self.avatars[i] for i in team] for team in teams]
+        self.avatars = {x.id: x for x in avatars}
+        self.teams = [[avatars[i].id for i in team] for team in teams]
         self.turn_data = []
+        self.vehicles = {}
         self.status = 'set_vehicle'
         self.id = str(uuid4())
         self.future = asyncio.Future()
@@ -57,7 +59,7 @@ class Arena():
     def connect_avatar(self, account_id, ws):
         self.avatars[account_id].connect(ws)
 
-    def disconnect_avatar(self, account_id, ws):
+    def disconnect_avatar(self, account_id):
         self.avatars[account_id].disconnect()
 
     def got_data(self, account_id, data):
@@ -66,12 +68,17 @@ class Arena():
     def get_field_position(self, data):
         return {'x': data['x'], 'y': data['y']}
 
+    def get_ally(self, account_id):
+        if account_id in self.teams[0]:
+            return self.teams[0]
+        return self.teams[1]
+
     def set_vehicle(self, account_id, data):
         my_team = self.get_ally(account_id)
         self.vehicles[account_id] = self.get_field_position(data)
         data = {k: v for k, v in self.vehicles.items() if k in my_team}
-        for avatar in my_team:
-            avatar.send_message(
+        for avatar_id in my_team:
+            self.avatars[avatar_id].send_message(
                 {'command': "update_vehicles", "vehicles": data}
             )
 
@@ -81,7 +88,7 @@ class Arena():
     async def turn_rotator(self, future):
         await asyncio.sleep(TURN_PERIOD)
 
-        print ("sync arena")
+        print("sync arena")
         self.sync_arena()
 
         self.status = 'battle'
@@ -92,9 +99,9 @@ class Arena():
             for data in self.turn_data:
                 if not winner or float(winner['data']) < float(data['data']):
                     winner = data
-            print ("winner", winner)
+            print("winner", winner)
             self.turn_data = []
-            for avatar in self.avatars:
+            for avatar in self.avatars.values():
                 if not winner:
                     msg = 'nooone has won'
                 elif avatar.ws == winner['ws']:
@@ -105,13 +112,12 @@ class Arena():
                 avatar.send_message({'message': msg})
 
     def sync_arena(self):
-        for ally, enemy in (arena['teams'], reversed(arena['teams'])):
-            data = {
-                'command': "sync_arena",
-                'ally': {k: vehicles[k] for k in ally if k in vehicles},
-                'enemy': {k: vehicles[k] for k in enemy if k in vehicles}
-            }
-            for acc in ally:
-                print ("sync", acc)
-                data['account_id'] = acc
-                arena['ws'][acc].send_str(json.dumps(data))
+        ally, enemy = self.teams
+        data = {
+            'command': "sync_arena",
+            'ally': {k: self.vehicles[k] for k in ally if k in self.vehicles},
+            'enemy': {k: self.vehicles[k] for k in enemy if k in self.vehicles}
+        }
+        for acc in chain(ally, enemy):
+            print("sync", acc)
+            self.avatars[acc].send_message(data)
