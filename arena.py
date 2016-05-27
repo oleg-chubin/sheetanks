@@ -69,6 +69,11 @@ class Arena():
             avatar.send_message(data)
 
     def calculate_turn_result(self, turn_data, divider):
+        result = {}
+        for k, click_info in turn_data.items():
+            result.setdefault(k, {}).update(
+                self.get_shot_coords(divider, click_info['x'], click_info['y'])
+        )
         return turn_data
 
     async def countdown_turn(self, delay):
@@ -111,6 +116,21 @@ class Arena():
         print(normalized_coords, x_offset)
         result = random.randrange(int(x_offset) + 1, -int(x_offset))
         return result
+
+    def get_shot_coords(self, x0, xclick, yclick):
+        if not x0:
+            return {'x': xclick, 'y': yclick}
+
+        y0 = 500
+        x1 = xclick - 500
+        y1 = 500 - yclick
+
+
+        x = (2 * y1 + x1 * (y0 / x0 + x0 / y0))/(y0 / x0 + x0 / y0)
+        y = -(x0 / y0 * x + (y1 + x0 / y0 *x1))
+
+        print("shot:", x0, xclick, yclick, 'x', 500 - x, 'y', 500 + y)
+        return {'x': 500 - x, 'y': 500 - y}
 
     def sync_arena(self):
         for ally, enemy in [self.teams, self.teams[::-1]]:
