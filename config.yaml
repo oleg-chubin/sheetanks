@@ -6,7 +6,7 @@ vehicles:
         height: 64
         hp: 300
         damage: 100
-        radius: 50
+        radius: 15
         image: rabittank.svg
     elktank:
         id: elktank
@@ -15,5 +15,5 @@ vehicles:
         height: 100
         hp: 400
         damage: 200
-        radius: 60
+        radius: 20
         image: elktank.svg

@@ -10,11 +10,17 @@ TURN_PERIOD = 20
 
 
 class Vehicle():
-    def __init__(self, vehicle):
+    def __init__(self, vehicle, **kwargs):
         self._data = {}
         for k, v in settings.vehicles[vehicle].items():
             self._data[k] = v
+        self._data.update(kwargs)
         self._data['initial_hp'] = self._data['hp']
+        self._data['alive'] = True
+
+    @property
+    def is_alive(self):
+        return self._data['alive']
 
     def set_position(self, pos):
         self._data.update(pos)

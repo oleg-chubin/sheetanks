@@ -74,6 +74,15 @@ function create_shot(arena_field, base_shot, x, y, alpha){
 
 }
 
+function create_text(node, x, y, text, color){
+    var text_node = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    text_node.setAttribute('style', "fill:"+ color + ";");
+    text_node.setAttribute('y', y);
+    text_node.setAttribute('x', x);
+    node.appendChild(text_node);
+    text_node.appendChild(document.createTextNode(text));
+}
+
 function sync_arena(parsed_data){
     $('.teammate,.enemy').remove();
     $('.shot').remove();
@@ -89,6 +98,9 @@ function sync_arena(parsed_data){
             var pos = normalize_coords(parsed_data.ally[key]);
             tank[0].setAttribute('y',  pos.y - vehicle_info.height / 2);
             tank[0].setAttribute('x',  pos.x - vehicle_info.width / 2);
+
+            create_text(tank[0], 0, 15, vehicle_info.hp + "/"+ vehicle_info.initial_hp, 'green');
+            create_text(tank[0], 0, 45, vehicle_info.name, 'green');
         }
     }
     for (key in parsed_data.enemy) {
@@ -100,6 +112,9 @@ function sync_arena(parsed_data){
             var pos = normalize_coords(parsed_data.enemy[key]);
             tank[0].setAttribute('y',  pos.y - vehicle_info.height / 2);
             tank[0].setAttribute('x',  arena_feld.width() - pos.x - vehicle_info.width / 2);
+
+            create_text(tank[0], 0, 15, vehicle_info.hp + "/"+ vehicle_info.initial_hp, 'red');
+            create_text(tank[0], 0, 45, vehicle_info.name, 'red');
         }
     }
 

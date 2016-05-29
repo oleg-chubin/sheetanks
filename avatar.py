@@ -10,7 +10,7 @@ class Avatar():
         self.postponed = []
 
     def set_vehicle(self, vehicle):
-        self.vehicle = Vehicle(vehicle)
+        self.vehicle = Vehicle(vehicle, name=self.name)
 
     def disconnect(self):
         self.connected = False

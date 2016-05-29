@@ -70,10 +70,27 @@ class Arena():
 
     def calculate_turn_result(self, turn_data, divider):
         result = {}
-        for k, click_info in turn_data.items():
-            result.setdefault(k, {}).update(
-                self.get_shot_coords(divider, click_info['x'], click_info['y'])
-        )
+
+        for ally, enemy in [self.teams, reversed(self.teams)]:
+            for avatar in ally:
+                if avatar.id not in turn_data:
+                    continue
+
+                click_info = turn_data[avatar.id]
+                shot = self.get_shot_coords(
+                    divider, click_info['x'], click_info['y'])
+                for enemy_avatar in enemy:
+                    if not enemy_avatar.vehicle.is_alive:
+                        continue
+
+                    d2 = (
+                        (enemy_avatar.vehicle.position['x'] - shot['x']) ** 2 +
+                        (enemy_avatar.vehicle.position['y'] - shot['y']) ** 2
+                    )
+                    if d2 < avatar.vehicle.info['radius'] ** 2:
+                        enemy_avatar.vehicle.decr_hp(avatar.vehicle.info['damage'])
+
+                result.setdefault(avatar.id, {}).update(shot)
         return turn_data
 
     async def countdown_turn(self, delay):
@@ -94,6 +111,10 @@ class Arena():
                 self.calculate_turn_result(self.turn_data, self.divider)
             )
             self.turn_data = {}
+
+            self.sync_arena()
+            await self.countdown_turn(2)
+
             self.divider = self.get_divider()
 
             for avatar in chain.from_iterable(self.teams):
@@ -113,7 +134,6 @@ class Arena():
         for x, y in normalized_coords:
             x_offset = max(x_offset, x / max(abs(y), 20) * 500)
 
-        print(normalized_coords, x_offset)
         result = random.randrange(int(x_offset) + 1, -int(x_offset))
         return result
 
@@ -129,7 +149,6 @@ class Arena():
         x = (2 * y1 + x1 * (y0 / x0 + x0 / y0))/(y0 / x0 + x0 / y0)
         y = -(x0 / y0 * x + (y1 + x0 / y0 *x1))
 
-        print("shot:", x0, xclick, yclick, 'x', 500 - x, 'y', 500 + y)
         return {'x': 500 - x, 'y': 500 - y}
 
     def sync_arena(self):
@@ -151,5 +170,4 @@ class Arena():
                 },
             }
             for avatar in ally:
-                print (data)
                 avatar.send_message(data)
