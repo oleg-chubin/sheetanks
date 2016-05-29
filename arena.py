@@ -140,9 +140,16 @@ class Arena():
                 'ally': {k.id: k.vehicle.info for k in ally if k.vehicle.position},
                 'enemy': {k.id: k.vehicle.info for k in enemy if k.vehicle.position},
                 'shots': {
-                    'ally': [s[k.id] for s in self.shots for k in ally if k.id in s],
-                    'enemy': [s[k.id] for s in self.shots for k in enemy if k.id in s],
+                    'ally': [
+                        {"position": s[k.id], "alpha": 100 - i * 20}
+                        for i, s in enumerate(reversed(self.shots[-5:]))
+                        for k in ally if k.id in s],
+                    'enemy': [
+                        {"position": s[k.id], "alpha": 100 - i * 20}
+                        for i, s in enumerate(reversed(self.shots[-5:]))
+                        for k in enemy if k.id in s],
                 },
             }
             for avatar in ally:
+                print (data)
                 avatar.send_message(data)

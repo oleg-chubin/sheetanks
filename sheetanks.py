@@ -71,7 +71,9 @@ async def arena_handle(request):
     session['arena_id'] = arena_id
 
     name = session.get('name', 'Anonymous')
-    return {'name': name}
+    tank_list = {i: data.image for i, data in settings.vehicles.items()}
+    return {
+        'name': name, 'tank_list': tank_list}
 
 
 @aiohttp_jinja2.template('prebattle.html')

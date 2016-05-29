@@ -5,17 +5,20 @@
 {% endblock %}
 
 {% block content %}
-<div class="arena_field">
-    <div id='subscribe'>
-        {% for mes in messages%}
-        <p>[{{ mes['time'].strftime('%H:%M:%S') }}] ({{ mes['user'] }}) {{ mes['msg'] }}</p>
-        {% endfor %}
-    </div>
-    <p>
-        <input  type="text" id="message" autocomplete="off">
-        <input class="btn btn-primary" type="submit" id='submit' value="Send">
-        <input class="btn btn-default" type="button", id="signout", value="Sign Out">
-    </p>
+<svg class="arena_field" height="210" width="500">
+</svg>
+<div class="invisible hangar">
+{% for tank, image in tank_list.items() %}
+   <div class="{{tank}}">
+     {% include "images/" + image %}
+   </div>
+{% endfor %}
+   <div class="shot-template">
+     {% include "images/shot.svg" %}
+   </div>
+   <div class="aim-template">
+     {% include "images/aim.svg" %}
+   </div>
 </div>
 {% endblock %}
 

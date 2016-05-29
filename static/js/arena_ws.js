@@ -6,39 +6,11 @@ catch(err){
 }
 
 // show message in div#subscribe
-function showMessage(message) {
-    var messageElem = $('#subscribe'),
-        height = 0,
-        date = new Date();
-        options = {hour12: false};
-    messageElem.append($('<p>').html('[' + date.toLocaleTimeString('en-US', options) + '] ' + message + '\n'));
-    messageElem.find('p').each(function(i, value){
-        height += parseInt($(this).height());
-    });
-
-    messageElem.animate({scrollTop: height});
-}
-
-function sendMessage(){
-    var msg = $('#message');
-    sock.send(msg.val());
-    msg.val('').focus();
-}
+function showMessage(message) {}
 
 sock.onopen = function(){
     showMessage('Connection to server started')
 }
-
-// send message from form
-$('#submit').click(function() {
-    sendMessage();
-});
-
-$('#message').keyup(function(e){
-    if(e.keyCode == 13){
-        sendMessage();
-    }
-});
 
 function normalize_coords(coords){
     var div = $('.arena_field');
@@ -57,47 +29,32 @@ function update_ally(parsed_data)
     for (key in parsed_data.vehicles) {
         if (parsed_data.vehicles.hasOwnProperty(key)){
             var vehicle_info = parsed_data.vehicles[key];
-            var tank = $('<img src="/static/images/' + vehicle_info.image +'" class="teammate">');
+
+            tank = $('.' + vehicle_info.id).find('svg').clone();
+            tank.addClass("teammate");
             $('.arena_field').append(tank);
             var pos = normalize_coords(vehicle_info);
+            tank[0].setAttribute('y',  pos.y - vehicle_info.height / 2);
+            tank[0].setAttribute('x',  pos.x - vehicle_info.width / 2);
+
             if (key != account_id){
                 tank.css(
-                    {
-                        top: pos.y - vehicle_info.height/2,
-                        left: pos.x - vehicle_info.width/2,
-                        position:'absolute',
-                        opacity: 0.4,
-                        filter: "alpha(opacity=40)" /* For IE8 and earlier */
-                    });
-            }
-            else{
-                tank.css(
-                    {
-                        top: pos.y - vehicle_info.height/2,
-                        left: pos.x - vehicle_info.width/2,
-                        position:'absolute'
-                    });
+                    { opacity: 0.4, filter: "alpha(opacity=40)" /* For IE8 and earlier */ });
             }
         }
     }
 }
 
 function createBaseLine(div, x1,y1, x2,y2){
-    var length = Math.sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
-  var angle  = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
-  var transform = 'rotate('+angle+'deg)';
-
-    var line = $('<div>')
-        .appendTo(div)
-        .addClass('line')
-        .css({
-          'position': 'absolute',
-          'transform': transform
-        })
-        .width(length)
-        .offset({left: x1, top: y1});
-
-    return line;
+    var obj = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    obj.setAttributeNS(null, "class", "line");
+    obj.setAttributeNS(null, "x1", x1);
+    obj.setAttributeNS(null, "y1", y1);
+    obj.setAttributeNS(null, "x2", x2);
+    obj.setAttributeNS(null, "y2", y2);
+    obj.setAttributeNS(null, "stroke", "black");
+    obj.setAttributeNS(null, "stroke-width", 2);
+    div[0].appendChild(obj);
 }
 
 function createLine(div, offset) {
@@ -106,52 +63,65 @@ function createLine(div, offset) {
     return createBaseLine(div, w/2 + offset, 0, w/2 - offset, h);
 }
 
+function create_shot(arena_field, base_shot, x, y, alpha){
+    shot = base_shot.clone();
+    shot.addClass('shot');
+    arena_field.append(shot);
+    shot[0].setAttribute('y', y);
+    shot[0].setAttribute('x', x);
+    shot.css(
+        { opacity: alpha/100, filter: "alpha(opacity=" + alpha + ")" /* For IE8 and earlier */ });
+
+}
+
 function sync_arena(parsed_data){
-    $('img.teammate,img.enemy').remove();
-    $('div.line').remove();
+    $('.teammate,.enemy').remove();
+    $('.shot').remove();
+    $('.line').remove();
+    var arena_feld = $('.arena_field')
+
     for (key in parsed_data.ally) {
         if (parsed_data.ally.hasOwnProperty(key)){
             var vehicle_info = parsed_data.ally[key];
-            tank = $('<img src="/static/images/' + vehicle_info.image + '" class="teammate hint--bottom  hint--always">');
-            $('.arena_field').append(tank);
+            tank = $('.' + vehicle_info.id).find('svg').clone();
+            tank.addClass("teammate");
+            arena_feld.append(tank);
             var pos = normalize_coords(parsed_data.ally[key]);
-            tank.css(
-                {
-                    top: pos.y - vehicle_info.height/2,
-                    left: pos.x - vehicle_info.width/2,
-                    position:'absolute'
-                });
+            tank[0].setAttribute('y',  pos.y - vehicle_info.height / 2);
+            tank[0].setAttribute('x',  pos.x - vehicle_info.width / 2);
         }
     }
     for (key in parsed_data.enemy) {
         if (parsed_data.enemy.hasOwnProperty(key)){
             var vehicle_info = parsed_data.enemy[key];
-            tank = $('<img src="/static/images/' + vehicle_info.image + '" class="enemy mirrored">');
-            $('.arena_field').append(tank);
+            tank = $('.' + vehicle_info.id).find('svg').clone();
+            tank.addClass("enemy");
+            arena_feld.append(tank);
             var pos = normalize_coords(parsed_data.enemy[key]);
-            tank.data('hp', vehicle_info.hp + "/" + vehicle_info.initial_hp);
-            tank.css(
-                {
-                    top: pos.y - vehicle_info.height/2,
-                    right: pos.x - vehicle_info.width/2,
-                    position:'absolute',
-                });
+            tank[0].setAttribute('y',  pos.y - vehicle_info.height / 2);
+            tank[0].setAttribute('x',  arena_feld.width() - pos.x - vehicle_info.width / 2);
         }
     }
 
+    var base_shot = $('.shot-template svg');
     $.map(parsed_data.shots.enemy, function(data){
-        shot = $('<img src="/static/images/burnout.png" class="burnout">');
-        $('.arena_field').append(shot);
-        var pos = normalize_coords(data);
-        shot.css({top: pos.y - 25, left: pos.x - 25, position:'absolute'});
-    })
+        var pos = normalize_coords(data.position);
+        create_shot(
+            arena_feld,
+            base_shot,
+            pos.x - vehicle_info.width / 2,
+            pos.y - vehicle_info.height / 2,
+            data.alpha);
+    });
 
     $.map(parsed_data.shots.ally, function(data){
-        shot = $('<img src="/static/images/burnout.png" class="burnout">');
-        $('.arena_field').append(shot);
-        var pos = normalize_coords(data);
-        shot.css({top: pos.y - 25, right: pos.x - 25, position:'absolute'});
-    })
+        var pos = normalize_coords(data.position);
+        create_shot(
+            arena_feld, base_shot,
+            arena_feld.width() - pos.x - vehicle_info.width / 2,
+            pos.y - vehicle_info.height / 2,
+            data.alpha)
+    });
 
     createLine($('.arena_field'), parsed_data.divider);
 }
@@ -167,18 +137,15 @@ function update_countdown(parsed_data){
 }
 
 function update_shot(parsed_data){
-    var shot_img =$('.arena_field').find('.shot');
-    if (!shot_img.length){
-        shot_img = $('<img src="/static/images/aim.png" class="shot">');
-        $('.arena_field').prepend(shot_img);
+    var aim =$('.arena_field').find('.aim');
+    if (!aim.length){
+        aim = $('.aim-template svg').clone();
+        aim.addClass('aim');
+        $('.arena_field').append(aim);
     }
-    var data = normalize_coords(parsed_data.data);
-    shot_img.css(
-        {
-            top: data.y - 25,
-            left: data.x - 25,
-            position:'absolute',
-        });
+    var pos = normalize_coords(parsed_data.data);
+    aim[0].setAttribute('y',  pos.y - 32);
+    aim[0].setAttribute('x',  pos.x - 32);
 }
 
 // income message handler

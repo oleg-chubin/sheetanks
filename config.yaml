@@ -1,5 +1,6 @@
 vehicles:
     rabittank:
+        id: rabittank
         name: rabit tank
         width: 64
         height: 64
@@ -8,6 +9,7 @@ vehicles:
         radius: 50
         image: rabittank.svg
     elktank:
+        id: elktank
         name: elk tank
         width: 100
         height: 100
