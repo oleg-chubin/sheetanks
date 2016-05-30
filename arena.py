@@ -91,7 +91,7 @@ class Arena():
                         enemy_avatar.vehicle.decr_hp(avatar.vehicle.info['damage'])
 
                 result.setdefault(avatar.id, {}).update(shot)
-        return turn_data
+        return result
 
     async def countdown_turn(self, delay):
         for i in range(delay, 0, -1):
@@ -99,10 +99,16 @@ class Arena():
             await asyncio.sleep(1)
 
     async def turn_rotator(self, future):
-        await self.countdown_turn(TURN_PERIOD)
+        for i in range(3600, 0, -1):
+            self.broadcast_message({'command': "update_countdown", "left": i})
+            await asyncio.sleep(0.5)
+            if all (0 < (i.vehicle.position or {}).get('x', -1) < 500 for i in  chain.from_iterable(self.teams)):
+                break
 
         self.status = 'battle'
+        
         for i in range(MAX_TURN_NUMBER):
+            self.divider = self.get_divider()
             self.sync_arena()
 
             await self.countdown_turn(TURN_PERIOD)
@@ -110,12 +116,11 @@ class Arena():
             self.shots.append(
                 self.calculate_turn_result(self.turn_data, self.divider)
             )
+            print("all shots", self.shots)
             self.turn_data = {}
 
             self.sync_arena()
             await self.countdown_turn(2)
-
-            self.divider = self.get_divider()
 
             for avatar in chain.from_iterable(self.teams):
                 avatar.send_message({'message': "msg"})
@@ -140,14 +145,18 @@ class Arena():
     def get_shot_coords(self, x0, xclick, yclick):
         if not x0:
             return {'x': xclick, 'y': yclick}
-
-        y0 = 500
+        k = 500.0 / float(x0)
+        
         x1 = xclick - 500
         y1 = 500 - yclick
+        
+        b = y1 + x1 / k
 
-
-        x = (2 * y1 + x1 * (y0 / x0 + x0 / y0))/(y0 / x0 + x0 / y0)
-        y = -(x0 / y0 * x + (y1 + x0 / y0 *x1))
+        x = b * k / (k * k + 1)
+        y = k * x
+        
+        x += (x - x1)
+        y += (y - y1)
 
         return {'x': 500 - x, 'y': 500 - y}
 

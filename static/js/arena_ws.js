@@ -60,6 +60,7 @@ function createBaseLine(div, x1,y1, x2,y2){
 function createLine(div, offset) {
     var h = div.height();
     var w = div.width();
+    offset = offset * w / 1000; 
     return createBaseLine(div, w/2 + offset, 0, w/2 - offset, h);
 }
 

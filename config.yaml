@@ -8,6 +8,14 @@ vehicles:
         damage: 100
         radius: 15
         image: rabittank.svg
+    ramtank:
+        name: mutton tank
+        width: 80
+        height: 80
+        hp: 300
+        damage: 100
+        radius: 50
+        image: ramtank.svg
     elktank:
         id: elktank
         name: elk tank
@@ -17,3 +25,11 @@ vehicles:
         damage: 200
         radius: 20
         image: elktank.svg
+    foXtank:
+        name: fox tank
+        width: 100
+        height: 100
+        hp: 300
+        damage: 100
+        radius: 80
+        image: foxtank.svg
